@@ -10,7 +10,7 @@ def create_app():
     app = Flask(__name__)
     DATABASE_URL = os.getenv("DATABASE_URL")
     
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:12345678@localhost/budgetbuddy'
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///budgetbuddy.db'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
     app.config['SECRET_KEY'] = 'your-secret-key'
