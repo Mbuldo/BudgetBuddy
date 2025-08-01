@@ -98,6 +98,11 @@ docker-compose up --build
 4. Run tests
 5. Submit a pull request
 
+## Deployment
+1. Build image: `docker build -t budgetbuddy .`
+2. Push to ACR: `docker push budgetbuddyacr.azurecr.io/budgetbuddy:latest`
+3. Deploy: `terraform apply`
+
 ## License
 
 This project is open source and available under the MIT License.

@@ -1,48 +1,61 @@
 resource "azurerm_resource_group" "rg" {
-  name     = "${var.project_name}-rg"
-  location = var.location
+  name     = "budgetbuddy-rg"
+  location = "eastus"
 }
 
 resource "azurerm_container_registry" "acr" {
-  name                = "${var.project_name}acr"
+  name                = "budgetbuddyacr"
   resource_group_name = azurerm_resource_group.rg.name
   location            = azurerm_resource_group.rg.location
   sku                 = "Basic"
   admin_enabled       = true
 }
 
-resource "azurerm_postgresql_flexible_server" "db" {
-  name                   = "${var.project_name}-db"
-  resource_group_name    = azurerm_resource_group.rg.name
-  location               = azurerm_resource_group.rg.location
-  administrator_login    = "postgres"
-  administrator_password = "password123"
-  version                = "16"
-  storage_mb             = 32768
-  sku_name               = "B_Standard_B1ms"
+resource "azurerm_storage_account" "storage" {
+  name                     = "budgetbuddystorage"
+  resource_group_name      = azurerm_resource_group.rg.name
+  location                 = azurerm_resource_group.rg.location
+  account_tier             = "Standard"
+  account_replication_type = "LRS"
+}
+
+resource "azurerm_storage_share" "sqlite" {
+  name                 = "sqlite-data"
+  storage_account_id = azurerm_storage_account.storage.id
+  quota                = 1  # 1GB
 }
 
 resource "azurerm_container_group" "app" {
-  name                = "${var.project_name}-app"
-  location            = azurerm_resource_group.rg.location
+  name                = "budgetbuddy-app"
   resource_group_name = azurerm_resource_group.rg.name
+  location            = azurerm_resource_group.rg.location
+  ip_address_type     = "Public"
   os_type             = "Linux"
+  dns_name_label      = "budgetbuddy-demo"
 
   container {
     name   = "budgetbuddy"
-    image  = "${azurerm_container_registry.acr.login_server}/${var.project_name}:latest"
+    image  = "${azurerm_container_registry.acr.login_server}/budgetbuddy:latest"
     cpu    = "0.5"
-    memory = "1.0"
+    memory = "1"
+
     ports {
       port     = 5000
       protocol = "TCP"
     }
 
-    environment_variables = {
-      DATABASE_URL = "postgresql://postgres:password123@${azurerm_postgresql_flexible_server.db.fqdn}:5432/budgetbuddy"
+    volume {
+      name       = "sqlite-data"
+      mount_path = "/app/data"
+      read_only  = false
+      storage_account_name = azurerm_storage_account.storage.name
+      storage_account_key  = azurerm_storage_account.storage.primary_access_key
+      share_name          = azurerm_storage_share.sqlite.name
     }
   }
-
-  ip_address_type = "Public"
-  dns_name_label  = "${var.project_name}-demo"
+  image_registry_credential {
+    server   = azurerm_container_registry.acr.login_server
+    username = azurerm_container_registry.acr.admin_username
+    password = azurerm_container_registry.acr.admin_password
+  }
 }
