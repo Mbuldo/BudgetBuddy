@@ -1,0 +1,61 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [develop]
+
+jobs:
+  build-test-scan:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Run tests
+      run: |
+        pytest tests/
+
+    - name: Dependency vulnerability scan
+      run: |
+        pip install safety
+        safety check --full-report
+
+    - name: Build Docker image
+      run: |
+        docker build -t my-python-app:${{ github.sha }} .
+
+    - name: Scan Docker image with Trivy
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: my-python-app:${{ github.sha }}
+
+    - name: Login to DockerHub
+      run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
+    - name: Push Docker image
+      run: |
+        docker tag my-python-app:${{ github.sha }} yourdockerhub/my-python-app:${{ github.sha }}
+        docker push yourdockerhub/my-python-app:${{ github.sha }}
+
+  deploy:
+    needs: build-test-scan
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+    - name: Trigger Deployment (via Render, Azure, etc.)
+      run: curl -X POST ${{ secrets.DEPLOY_WEBHOOK }}
