@@ -103,6 +103,6 @@ docker-compose up --build
 2. Push to ACR: `docker push budgetbuddyacr.azurecr.io/budgetbuddy:latest`
 3. Deploy: `terraform apply`
 
-## License
-
-This project is open source and available under the MIT License.
+## Monitoring  
+- **Live Dashboard**: [Azure Insights](https://portal.azure.com/#view/Microsoft_Azure_Monitoring/...)  
+- **Alerts**: CPU > 80% triggers email notifications.  
