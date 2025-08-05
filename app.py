@@ -1,10 +1,13 @@
-AZURE_MONITOR_KEY = "InstrumentationKey=74d770f9-854f-4ba4-938f-b8013ea36187"
 import logging
 from flask import Flask
 import os
+from opencensus.ext.azure.trace_exporter import AzureExporter # type: ignore
+from opencensus.trace.samplers import ProbabilitySampler # type: ignore
+from opencensus.trace.tracer import Tracer # type: ignore
+
 
 from app import create_app
-
+AZURE_MONITOR_KEY = "InstrumentationKey=74d770f9-854f-4ba4-938f-b8013ea36187"
 app = create_app()
 
 if __name__ == '__main__':
@@ -29,10 +32,6 @@ if os.environ.get('ENV') == 'production':
 def home():
     app.logger.info('Homepage accessed')  
     return "BudgetBuddy Home"
-
-from opencensus.ext.azure.trace_exporter import AzureExporter # type: ignore
-from opencensus.trace.samplers import ProbabilitySampler # type: ignore
-from opencensus.trace.tracer import Tracer # type: ignore
 
 tracer = Tracer(
     exporter=AzureExporter(

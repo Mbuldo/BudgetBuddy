@@ -1,0 +1,4 @@
+def init_db():
+    # Database initialization logic here
+
+# Add a newline at the end of the file
