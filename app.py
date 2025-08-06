@@ -33,6 +33,7 @@ def home():
     app.logger.info('Homepage accessed')  
     return "BudgetBuddy Home"
 
+
 tracer = Tracer(
     exporter=AzureExporter(
         connection_string="InstrumentationKey=YOUR_KEY"
@@ -45,3 +46,4 @@ def add_transaction():
     with tracer.span(name='add_transaction'):
         
         return "Transaction logged"
+    
