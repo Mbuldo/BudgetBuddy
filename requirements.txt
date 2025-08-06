@@ -21,6 +21,8 @@ flask==2.3.3
     #   opencensus-ext-flask
 flask-login==0.6.3
     # via -r requirements.in
+flask-migrate
+flask-sqlalchemy
 google-api-core==2.25.1
     # via opencensus
 google-auth==2.40.3
