@@ -1,0 +1,73 @@
+name: CD Pipeline
+on:
+  push:
+    branches: [ "main", "develop" ]
+  pull_request:
+    branches: [ "c_deployment" ]
+
+env:
+  ACR_NAME: budgetbuddyregistry123  # Your actual ACR name
+  RESOURCE_GROUP: myRG
+  WEBAPP_STAGING: budgetbuddy-staging
+  WEBAPP_PROD: budgetbuddy-prod
+
+jobs:
+  build-test-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install -r requirements.txt
+      - run: pytest tests/
+      - uses: anchore/sbom-action@v1
+      
+      - name: Build and Push Docker Image
+        run: |
+          docker build -t ${{ env.ACR_NAME }}.azurecr.io/budgetbuddy:${{ github.sha }} .
+          docker login ${{ env.ACR_NAME }}.azurecr.io -u ${{ secrets.ACR_USERNAME }} -p ${{ secrets.ACR_PASSWORD }}
+          docker push ${{ env.ACR_NAME }}.azurecr.io/budgetbuddy:${{ github.sha }}
+
+  deploy-staging:
+    needs: build-test-scan
+    if: github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDS }}
+          
+      - name: Deploy to Staging
+        run: |
+          az webapp config container set \
+            --name ${{ env.WEBAPP_STAGING }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --docker-custom-image-name ${{ env.ACR_NAME }}.azurecr.io/budgetbuddy:${{ github.sha }} \
+            --docker-registry-server-url https://${{ env.ACR_NAME }}.azurecr.io \
+            --docker-registry-server-user ${{ secrets.ACR_USERNAME }} \
+            --docker-registry-server-password ${{ secrets.ACR_PASSWORD }}
+
+  deploy-prod:
+    needs: build-test-scan
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDS }}
+          
+      - name: Approve Production Deployment
+        uses: trstringer/manual-approval@v1
+        with:
+          secret: ${{ github.token }}
+          approvers: Mbuldo
+          
+      - name: Deploy to Production
+        run: |
+          az webapp config container set \
+            --name ${{ env.WEBAPP_PROD }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --docker-custom-image-name ${{ env.ACR_NAME }}.azurecr.io/budgetbuddy:${{ github.sha }} \
+            --docker-registry-server-url https://${{ env.ACR_NAME }}.azurecr.io \
+            --docker-registry-server-user ${{ secrets.ACR_USERNAME }} \
+            --docker-registry-server-password ${{ secrets.ACR_PASSWORD }}

@@ -103,6 +103,14 @@ docker-compose up --build
 2. Push to ACR: `docker push budgetbuddyacr.azurecr.io/budgetbuddy:latest`
 3. Deploy: `terraform apply`
 
-## License
+### Monitoring Setup
 
-This project is open source and available under the MIT License.
+Alerts were configured manually using:
+```bash
+# HTTP Error Alert
+az monitor metrics alert create \
+  --name "HighHTTPErrors" \
+  --resource-group myRG \
+  --scopes $(az webapp show --name budgetbuddy-prod --resource-group myRG --query id -o tsv) \
+  --condition "total Http5xx > 0" \
+  --severity 3
