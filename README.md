@@ -103,6 +103,12 @@ docker-compose up --build
 2. Push to ACR: `docker push budgetbuddyacr.azurecr.io/budgetbuddy:latest`
 3. Deploy: `terraform apply`
 
-## Monitoring  
-- **Live Dashboard**: [Azure Insights](https://portal.azure.com/#view/Microsoft_Azure_Monitoring/...)  
-- **Alerts**: CPU > 80% triggers email notifications.  
+## Monitoring
+Alerts are configured manually via Azure CLI:
+```bash
+az monitor metrics alert create \
+  --name "HighHTTPErrorsAlert" \
+  --resource-group myRG \
+  --scopes $(az webapp show --name budgetbuddy-prod --resource-group myRG --query id -o tsv) \
+  --condition "total Http5xx > 0" \
+  --severity 3
