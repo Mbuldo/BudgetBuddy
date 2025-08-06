@@ -1,0 +1,99 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "webAppName": {
+      "type": "string",
+      "defaultValue": "budgetbuddy-staging",
+      "metadata": {
+        "description": "The name of the Web App"
+      }
+    },
+    "acrName": {
+      "type": "string",
+      "defaultValue": "budgetbuddyregistry123",
+      "metadata": {
+        "description": "Azure Container Registry name"
+      }
+    },
+    "imageTag": {
+      "type": "string",
+      "defaultValue": "latest",
+      "metadata": {
+        "description": "Docker image tag"
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "East US",
+      "metadata": {
+        "description": "Location for all resources"
+      }
+    },
+    "appServicePlanName": {
+      "type": "string",
+      "defaultValue": "myAppServicePlan",
+      "metadata": {
+        "description": "Name of the App Service Plan"
+      }
+    }
+  },
+  "variables": {
+    "containerImage": "[concat(parameters('acrName'), '.azurecr.io/budgetbuddy:', parameters('imageTag'))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Web/sites",
+      "apiVersion": "2022-03-01",
+      "name": "[parameters('webAppName')]",
+      "location": "[parameters('location')]",
+      "kind": "app,linux,container",
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "properties": {
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', parameters('appServicePlanName'))]",
+        "siteConfig": {
+          "linuxFxVersion": "[concat('DOCKER|', variables('containerImage'))]",
+          "alwaysOn": true,
+          "http20Enabled": true,
+          "minTlsVersion": "1.2",
+          "appSettings": [
+            {
+              "name": "WEBSITES_PORT",
+              "value": "5000"
+            },
+            {
+              "name": "DOCKER_REGISTRY_SERVER_URL",
+              "value": "[concat('https://', parameters('acrName'), '.azurecr.io')]"
+            }
+          ]
+        },
+        "httpsOnly": true
+      },
+      "dependsOn": []
+    },
+    {
+      "type": "Microsoft.Web/sites/config",
+      "apiVersion": "2022-03-01",
+      "name": "[concat(parameters('webAppName'), '/web')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "acrUseManagedIdentityCreds": true
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites', parameters('webAppName'))]"
+      ]
+    }
+  ],
+  "outputs": {
+    "webAppName": {
+      "type": "string",
+      "value": "[parameters('webAppName')]"
+    },
+    "webAppUrl": {
+      "type": "string",
+      "value": "[concat('https://', parameters('webAppName'), '.azurewebsites.net')]"
+    }
+  }
+}
