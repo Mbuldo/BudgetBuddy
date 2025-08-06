@@ -1,7 +1,7 @@
 name: CD Pipeline
 on:
   push:
-    branches: [ "main" ]  
+    branches: [ "main", "develop" ]  # Added develop here
   pull_request:
     branches: [ "c_deployment" ]
 
@@ -11,27 +11,58 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: pip install -r requirements.txt
-      - run: pytest tests/              
-      - uses: anchore/sbom-action@v1    
+      - run: pytest tests/
+      - uses: anchore/sbom-action@v1
       - name: Build Docker image
         run: docker build -t budgetbuddy:${{ github.sha }} .
+      - name: Login to Azure Container Registry
+        uses: azure/docker-login@v1
+        with:
+          login-server: yourregistry.azurecr.io
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+      - name: Push Docker image
+        run: |
+          docker tag budgetbuddy:${{ github.sha }} yourregistry.azurecr.io/budgetbuddy:${{ github.sha }}
+          docker push yourregistry.azurecr.io/budgetbuddy:${{ github.sha }}
 
   deploy-staging:
     needs: build-test-scan
     if: github.ref == 'refs/heads/develop'
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
       - uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDS }}
-      - run: az webapp up --name budgetbuddy-staging --resource-group myRG
+      - run: |
+          az webapp config container set \
+            --name budgetbuddy-staging \
+            --resource-group myRG \
+            --docker-custom-image-name yourregistry.azurecr.io/budgetbuddy:${{ github.sha }} \
+            --docker-registry-server-url https://yourregistry.azurecr.io \
+            --docker-registry-server-user ${{ secrets.REGISTRY_USERNAME }} \
+            --docker-registry-server-password ${{ secrets.REGISTRY_PASSWORD }}
 
   deploy-prod:
     needs: build-test-scan
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
       - uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDS }}
-      - run: az webapp up --name budgetbuddy-prod --resource-group myRG
+      - name: Approve Production Deployment
+        uses: trstringer/manual-approval@v1
+        with:
+          secret: ${{ github.token }}
+          approvers: your-github-username
+      - run: |
+          az webapp config container set \
+            --name budgetbuddy-prod \
+            --resource-group myRG \
+            --docker-custom-image-name yourregistry.azurecr.io/budgetbuddy:${{ github.sha }} \
+            --docker-registry-server-url https://yourregistry.azurecr.io \
+            --docker-registry-server-user ${{ secrets.REGISTRY_USERNAME }} \
+            --docker-registry-server-password ${{ secrets.REGISTRY_PASSWORD }}
