@@ -58,8 +58,8 @@ jobs:
             --container-registry-password ${{ secrets.ACR_PASSWORD }}
 
   deploy-prod:
-    needs: build-test-scan
-    if: github.ref == 'refs/heads/main'
+    needs: [build-test-scan, deploy-staging]
+    if: github.ref == 'refs/heads/main' && needs.build-test-scan.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
