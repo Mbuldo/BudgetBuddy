@@ -1,4 +1,3 @@
-
 from app import create_app
 import logging
 from flask import Flask
@@ -46,4 +45,3 @@ def add_transaction():
     with tracer.span(name='add_transaction'):
         
         return "Transaction logged"
-    
