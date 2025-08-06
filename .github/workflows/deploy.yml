@@ -1,9 +1,9 @@
 name: CD Pipeline
 on:
   push:
-    branches: [ "main", "develop" ]
+    branches: [ "main", "develop", "hotfix/**" ]
   pull_request:
-    branches: [ "c_deployment" ]
+    branches: [ "**" ]
 
 env:
   ACR_NAME: budgetbuddyregistry123
@@ -73,6 +73,7 @@ jobs:
           secret: ${{ github.token }}
           approvers: Mbuldo
           
+      
       - name: Deploy to Production
         run: |
           az webapp config container set \
